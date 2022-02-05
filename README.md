@@ -1,4 +1,4 @@
-# PortalSector - A 2.5D Game Engine in the spirit of Duke Nukem 3D Build Engine and Doom Engine
+# PortalSector - A 2.5D Game Engine in the spirit of Duke Nukem 3D Build Engine and Doom Engine. Written in Javascript.
 
 ![alt text](https://github.com/JonathanMalott/PortalSectorGameEngine/blob/main/Portal.png "Woah, sectors!")
 
