@@ -1,0 +1,42 @@
+<html>
+<head>
+  <style>
+    
+     canvas {
+      display: block;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: pixelated;
+      transform: scale(3.2);
+      transform-origin: left top;
+       border: 1px solid blue;
+    }
+
+    #map {
+         position: relative;
+        top: 450px;
+    }
+
+    
+  </style>
+</head>
+<body>
+
+
+  
+<container>
+  <ul>
+  <li>Current Sector: <a id="CurrentSector"></a></li>
+  <li>Position: <a id="CurrentPosition"></a></li>
+  <li>Angle: <a id="CurrentAngle"></a> Yaw: <a id="CurrentYaw"></a></li>
+</ul>
+</container>
+
+<container>
+    <canvas id="pixelGame" width="300" height="200"></canvas>
+    <canvas id="map" width="300" height="200"></canvas>
+    <script src="PortalEngine.js"></script>   
+</container>
+
+
+</body>
+</html>
