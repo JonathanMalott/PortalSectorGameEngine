@@ -1,4 +1,4 @@
-# PortalSectorGameEngine
+# PortalSector - A 2.5D Game Engine in the spirit of Duke Nukem 3D Build Engine and Doom Engine
 
 ![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 1")
 
