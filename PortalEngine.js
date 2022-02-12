@@ -10,66 +10,17 @@ const HeadMargin = 1    // How much room there is above camera before the head h
 const KneeHeight = 2    // How tall obstacles the player can simply walk over without jumping
 const hfov = (0.73*H)  // Affects the horizontal field of vision
 const vfov = (.2*H)    // Affects the vertical field of vision
+const scale = 2 // How much to scale up the map
+var player = new playerClass();
 
-class xyz{
-	constructor() {
-		this.x = null;
-		this.y = null;
-		this.z = null
-	}
-} 
+//Modes are GAME and EDITOR
+var mode = "GAME"
 
-class xy{
-	constructor(x,y) {
-		this.x = x;
-		this.y = y;
-	}
-} 
+//VIEW, ADDSECTOR
+var editorMode = "VIEW" 
 
-class sector {
-  constructor() {
-    this.floor = null;
-    this.ceil = null;
-    this.vertex = [];
-    this.neighbors = new Array();
-    this.npoints = null;
-  }
-} var sectors = [];
 
-var NumSectors = 0;
-
-/* Player: location */
-class playerClass{
-
-	constructor(x, y) {
-    
-	 	this.where = new xyz(); 
-	 	this.velocity = new xyz();
-
-	 	this.angle = null;
-	 	this.anglesin = null;
-	 	this.anglecos = null;
-	 	this.yaw = null;
-
-	 	this.sector = null;
-
-	}
-
-} var player = new playerClass();
-
-// Utility functions.
-const clamp = (a, mi, ma) => Math.min(Math.max(a, mi), ma);
-const vxs = (x0,y0, x1,y1) => ((x0)*(y1) - (x1)*(y0));
-const Overlap = (a0,a1,b0,b1) => (Math.min(a0,a1) <= Math.max(b0,b1) && Math.min(b0,b1) <= Math.max(a0,a1))
-const IntersectBox = (x0,y0, x1,y1, x2,y2, x3,y3) => (Overlap(x0,x1,x2,x3) && Overlap(y0,y1,y2,y3))
-const PointSide = (px,py, x0,y0, x1,y1) => vxs((x1)-(x0), (y1)-(y0), (px)-(x0), (py)-(y0))
-const convertRange = ( value, r1, r2 ) => (( value - r1[ 0 ] ) * ( r2[ 1 ] - r2[ 0 ] ) / ( r1[ 1 ] - r1[ 0 ] ) + r2[ 0 ])
-function Intersect(x1,y1, x2,y2, x3,y3, x4,y4){
-	var out = new xy();
-	out.x = vxs(vxs(x1,y1, x2,y2), (x1)-(x2), vxs(x3,y3, x4,y4), (x3)-(x4)) / vxs((x1)-(x2), (y1)-(y2), (x3)-(x4), (y3)-(y4));
-	out.y = vxs(vxs(x1,y1, x2,y2), (y1)-(y2), vxs(x3,y3, x4,y4), (y3)-(y4)) / vxs((x1)-(x2), (y1)-(y2), (x3)-(x4), (y3)-(y4)); 
-	return out;
-}
+var temporaryVertex = []
 
 
 //Vertex - y coordinate followed by list of x coordinates
@@ -117,19 +68,45 @@ sectorRaw = [
 ];
 
 
+//List of XY coordinates of verticies
+vertexRaw = [ [0,0],//0
+			  [15,0],   //1
+			  [40,0],   //2
+			  [0,15],   //3
+			  [15,15],  //4
+			  [40,15],  //5
+			  [0,30],   //6
+			  [15,30],  //7
+			  [ 15,25], //8
+			  [35,25],  //9
+			  [35,30],  //10
+			  [15,30],  //11
+			  [25,-10], //12
+			  [35,-5],//13
+			  [40,-5],//14
+			  [40,30],//15
+			  [35,30], //16
+			  [30,-5],//17
+			  [35,-5],//18
+			  [30,0],//19
+			  [35,0],//20
+	 ];
 
 
 //Vertex - y coordinate followed by list of x coordinates
-vertexRaw = [[0,	 0, 15, 30],
-			 [15,	 0, 15, 30],
-			 [30,    0, 15]];
+//vertexRaw = [[0,	 0, 15, 30],
+//			 [15,	 0, 15, 30],
+//			 [30,    0, 15]];
 
 //Sector (floor height, ceiling height, then vertex numbers in clockwise order)
 //After the list of vertexes comes the list of sector numbers in the opposite side of that wall, -1 is none
 sectorRaw = [
-	[0,15, 0,1,4,3, -1,2, 1,-1],
-	[2,17, 3,4,7,6, 0,-1,-1,-1],
-	[-1,30,1,2,5,4, -1,-1,-1,0]
+	[0,15,     0,1,4,3,         -1,2, 1,-1    ],//first hall
+	[-1,17,     3,4,8,7,6,        0,-1,3,-1,-1 ],
+	[2,30,    1,19,20,2,5,4,       -1,5,-1,-1,-1,0  ],//tall room
+	[-7,14,    8,9,10,11,       -1,4,-1,1     ],//hallway 1
+	[-12,-1,   13,14,15,16,20,     -1,-1,-1,-1,5   ],//underneath row
+	[-12,25,     17,18,20,19,     -1,4,-1,-1   ],//shaft
 ];
 
 function LoadData(){
@@ -138,8 +115,7 @@ function LoadData(){
 
 	/* Initialize the vertices */
 	for(var i = 0; i < vertexRaw.length; i++)
-		for(var j = 1; j < vertexRaw[i].length; j++)
-			vertices.push(new xy(vertexRaw[i][j],vertexRaw[i][0]))
+		vertices.push(new xy(vertexRaw[i][0],vertexRaw[i][1]))
 		
 
 	/* Initialize the sectors */
@@ -213,6 +189,8 @@ function vline(x,y1,y2,top,middle,bottom)
  */
 function MovePlayer(dx,dy)
 {
+	if(editorMode == "ADDSECTOR") return;
+
     var px = player.where.x;
     var py = player.where.y;
     /* Check if this movement crosses one of this sector's edges
@@ -245,6 +223,8 @@ function MovePlayer(dx,dy)
 //	DRAW THE GAME SCREEN
 //---------------------------------------------------------------------
 function DrawScreen(){
+
+	if(mode != "GAME") return;
 
 	var MaxQueue = 32;
 
@@ -426,182 +406,6 @@ function DrawScreen(){
     }
 }
 
-function _DrawScreen(){
-
-
-
-	var MaxQueue = 32;
-
-	var queue = [];
-	var head = 0;
-	var tail = 0;
-
-	var ytop = [],  ybottom = [], renderedsectors = [];
-	for(var i = 0; i < W; i++) ytop.push(0);
-	for(var i = 0; i < W; i++) ybottom.push(H-1);
-	for(var i = 0; i < sectorRaw.length; i++) renderedsectors.push(0);
-
-	class item {
-	  constructor(a,b,c) {
-	  	this.sectorno = a;
-	  	this.sx1 = b;
-	  	this.sx2 = c; 
-	  }
-	}
-
-	var queue = Array();
-	for(var i = 0; i < MaxQueue; i++) queue.push(new item());
-
-	/* Begin whole-screen rendering from where the player is. */
-	queue[head] = { sectorno: player.sector, sx1: 0, sx2: W-1 };
-
-	if(++head == MaxQueue) head = 0;
-
-    while(head != tail){
-
-	//console.log(head,tail)
-		const now = queue[tail]; 
-    
-    	/* Pick a sector & slice from the queue to draw */
-	    if(++tail == MaxQueue) tail = 0;
-	    if(renderedsectors[now.sectorno] & 0x21) continue; // Odd = still rendering, 0x20 = give up
-	    ++renderedsectors[now.sectorno];
-	    const sect = sectors[now.sectorno];
-
-		/* Render each wall of this sector that is facing towards player. */
-		for(var s = 0; s < sect.npoints-1; ++s)
-		{
-			
-			/* Acquire the x,y coordinates of the two endpoints (vertices) of this edge of the sector */
-	        var vx1 = sect.vertex[s+0].x - player.where.x;
-	        var vy1 = sect.vertex[s+0].y - player.where.y;
-
-	        var vx2 = sect.vertex[s+1].x - player.where.x;
-	        var vy2 = sect.vertex[s+1].y - player.where.y;
-
-	        /* Rotate them around the player's view */
-	        var pcos = player.anglecos;
-	        var psin = player.anglesin;
-	        var tx1 = vx1 * psin - vy1 * pcos;
-	        var tz1 = vx1 * pcos + vy1 * psin;
-	        var tx2 = vx2 * psin - vy2 * pcos;
-	        var tz2 = vx2 * pcos + vy2 * psin;
-
-	        /* Is the wall at least partially in front of the player? */
-	        if(tz1 <= 0 && tz2 <= 0) continue;
-
-	        /* If it's partially behind the player, clip it against player's view frustrum */
-	        if(tz1 <= 0 || tz2 <= 0)
-	        {
-	            var nearz = 1e-4;
-	            var farz = 5;
-	            var nearside = 1e-5;
-	            var farside = 20;
-	            // Find an intersection between the wall and the approximate edges of player's view
-	            var i1 = Intersect(tx1,tz1,tx2,tz2, -nearside,nearz, -farside,farz);
-	            var i2 = Intersect(tx1,tz1,tx2,tz2,  nearside,nearz,  farside,farz);
-	            if(tz1 < nearz) { if(i1.y > 0) { tx1 = i1.x; tz1 = i1.y; } else { tx1 = i2.x; tz1 = i2.y; } }
-	            if(tz2 < nearz) { if(i1.y > 0) { tx2 = i1.x; tz2 = i1.y; } else { tx2 = i2.x; tz2 = i2.y; } }
-	        }
-
-	        /* Do perspective transformation */
-	        var xscale1 = hfov / tz1, yscale1 = vfov / tz1;
-	        var x1 = W/2 - parseInt(tx1 * xscale1);
-	        var xscale2 = hfov / tz2, yscale2 = vfov / tz2;
-	        var x2 = W/2 - parseInt(tx2 * xscale2);
-
-	        if(x1 >= x2 || x2 < now.sx1 || x1 > now.sx2) continue; // Only render if it's visible
-
-	        /* Acquire the floor and ceiling heights, relative to where the player's view is */
-	        var yceil  = sect.ceil  - player.where.z;
-	        var yfloor = sect.floor - player.where.z;
-
-	        /* Check the edge type. neighbor=-1 means wall, other=boundary between two sectors. */
-	        var neighbor = sect.neighbors[s];
-	        var nyceil=0, nyfloor=0;
-	        if(neighbor >= 0) // Is another sector showing through this portal?
-	        {
-	            nyceil  = sectors[neighbor].ceil  - player.where.z;
-	            nyfloor = sectors[neighbor].floor - player.where.z;
-	        }
-
-	        /* Project our ceiling & floor heights into screen coordinates (Y coordinate) */
-	        const Yaw = (y,z) => (y + z*player.yaw)
-	        var y1a  = H/2 - parseInt(Yaw(yceil, tz1) * yscale1);
-	        var y1b = H/2 -  parseInt(Yaw(yfloor, tz1) * yscale1);
-	        var y2a  = H/2 - parseInt(Yaw(yceil, tz2) * yscale2);
-	        var y2b = H/2 -  parseInt(Yaw(yfloor, tz2) * yscale2);
-	        
-	        /* The same for the neighboring sector */
-	        var ny1a = H/2 - parseInt(Yaw(nyceil, tz1) * yscale1);
-	        var ny1b = H/2 - parseInt(Yaw(nyfloor, tz1) * yscale1);
-	        var ny2a = H/2 - parseInt(Yaw(nyceil, tz2) * yscale2);
-	        var ny2b = H/2 - parseInt(Yaw(nyfloor, tz2) * yscale2);
-
-	        /* Render the wall. */
-	        var beginx = Math.max(x1, now.sx1);
-	        var endx = Math.min(x2, now.sx2);
-
-	        for(var x = beginx; x <= endx; ++x)
-	        {
-	            /* Calculate the Z coordinate for this point. (Only used for lighting.) */
-	            var z = ((x - x1) * (tz2-tz1) / (x2-x1) + tz1) * 8;
-	            
-	            /* Acquire the Y coordinates for our ceiling & floor for this X coordinate. Clamp them. */
-	            var ya = (x - x1) * (y2a-y1a) / (x2-x1) + y1a;
-	            var cya = clamp(ya, ytop[x],ybottom[x]); // top
-	            var yb = (x - x1) * (y2b-y1b) / (x2-x1) + y1b;
-	            var cyb = clamp(yb, ytop[x],ybottom[x]); // bottom
-
-	            /* Render ceiling: everything above this sector's ceiling height. */
-	            vline(x, ytop[x], cya-1, [17,17,17],[134,134,134],[17,17,17]);
-
-	            /* Render floor: everything below this sector's floor height. */
-	            vline(x, cyb+1, ybottom[x], [0,0,255],[0,0,170],[0,0,255]);
-
-	            /* Is there another sector behind this edge? */
-	            if(neighbor >= 0)
-	            {
-	                /* Same for _their_ floor and ceiling */
-	                var nya = (x - x1) * (ny2a-ny1a) / (x2-x1) + ny1a;
-	                var cnya = clamp(nya, ytop[x],ybottom[x]);
-	                var nyb = (x - x1) * (ny2b-ny1b) / (x2-x1) + ny1b;
-	                var cnyb = clamp(nyb, ytop[x],ybottom[x]);
-
-	                /* If our ceiling is higher than their ceiling, render upper wall */
-	            	//Grey 
-	                var r1 = [1*(255-parseInt(z)),1*(255-parseInt(z)),1*(255-parseInt(z))];
-	            	//Purple
-	                var r2 = [4*parseInt(31- (parseInt(z)/8)) , 0 , 7*parseInt(31- (parseInt(z)/8))];
-	  
-	                vline(x, cya, cnya-1, 0, x==x1||x==x2 ? 0 : r1, 0); // Between our and their ceiling
-	                ytop[x] = clamp(Math.max(cya, cnya), ytop[x], H-1);   // Shrink the remaining window below these ceilings
-	                
-	                /* If our floor is lower than their floor, render bottom wall */
-	                vline(x, cnyb+1, cyb, 0, x==x1||x==x2 ? 0 : r2, 0); // Between their and our floor
-	                ybottom[x] = clamp(Math.min(cyb, cnyb), 0, ybottom[x]); // Shrink the remaining window above these floors
-	            } else {
-	                /* There's no neighbor. Render wall from top (cya = ceiling level) to bottom (cyb = floor level). */
-	                var r = [1*(255-parseInt(z)),1*(255-parseInt(z)),1*(255-parseInt(z))];
-	                vline(x, cya, cyb, 0, x==x1||x==x2 ? 0 : r, 0);
-	            }
-	        }
-			
-
-	        /* Schedule the neighboring sector for rendering within the window formed by this wall. */
-	        if(neighbor >= 0 && endx >= beginx && (head+MaxQueue+1-tail)%MaxQueue)
-	        {        	
-	            var a = new item( neighbor, beginx, endx );
-	            queue[tail] = a;
-	            if(++head == MaxQueue) head = 0;
-	        }
-	    } // for s in sector's edges
-	    ++renderedsectors[now.sectorno];
-	    //break;
-
-    }
-}
-
 
 //---------------------------------------------------------------------
 //	USER INPUT
@@ -609,9 +413,21 @@ function _DrawScreen(){
 if(true){
 	document.onkeydown = checkKey;
 	document.onkeyup = checkKey;
+	document.onclick = checkMouse;
+	function checkMouse(event){
+	switch (event.which) {
+	    case 1:
+	      if(mode== "EDITOR" && editorMode=="ADDSECTOR"){
+				mapAddVertex()
+		  }
+	      break;
+	  }
+	}
+
 	function checkKey(event) {
 
 		switch((event.code)){
+		
 			case 'KeyW': 
 				wsad[0] = event.type=="keydown";
 				break;
@@ -641,6 +457,40 @@ if(true){
 			case 'ArrowDown': 
 				player.yaw += .1
 				break;
+
+
+			case 'KeyY': 
+				sectors[player.sector].ceil += 1
+				break;
+			case 'KeyH': 
+				sectors[player.sector].ceil -= 1
+				break;
+			case 'KeyU': 
+				sectors[player.sector].floor += 1
+				break;
+			case 'KeyJ': 
+				sectors[player.sector].floor -= 1
+				break;
+
+
+			case 'KeyE': 
+				if(event.type=="keydown" && mode == "EDITOR")
+					mode = "GAME"
+				else if(event.type=="keydown" && mode == "GAME")
+					mode = "EDITOR";
+				break;
+			case 'KeyG': 
+				if(mode == "EDITOR"){
+					if(event.type=="keydown" && editorMode == "VIEW")
+						editorMode = "ADDSECTOR"
+					else if(event.type=="keydown" && editorMode == "ADDSECTOR")
+						editorMode = "VIEW";
+					console.log(editorMode)
+				}
+				break;
+
+
+
 			case 'Space': 
 				if(ground){
 					player.velocity.z += 0.5;
@@ -668,21 +518,42 @@ if(true){
 }
 
 
+
+
+function mapAddVertex(){
+	var newX = Math.ceil(this.mouseX/5)*5;
+	var newY = Math.ceil(this.mouseY/5)*5;
+	//scaleX*(player.where.x+mapOffsetX)
+	temporaryVertex.push( new xy(  (newX-mapOffsetX)/scaleX  ,  (newY-mapOffsetY)/scaleY  ) );
+}
+
+
 function DrawMap(){
 
-	const scale = 2
+	if(mode != "EDITOR") return;
+	
 
 	//Draw Grey Background and Grid Lines
 	for(var x = 0; x < W; x++)
 		for(var y = 0; y < H; y++){
 			if(x % 10 == 0)
-				drawMapPixel(x,y,[100,100,100]);
+				drawMapPixel(x,y,[60,60,60]);
 			else if(y % 10 == 0)
-				drawMapPixel(x,y,[100,100,100]);
-			else
-				drawMapPixel(x,y,[80,80,80])
+				drawMapPixel(x,y,[60,60,60]);
+			else if(editorMode == "VIEW")
+				drawMapPixel(x,y,[50,50,50])
+			else if(editorMode == "ADDSECTOR")
+				drawMapPixel(x,y,[55,35,35])
+
+			if(x % 100 == 0)
+				drawMapPixel(x,y,[80,80,80]);
+			else if(y % 100 == 0)
+				drawMapPixel(x,y,[80,80,80]);
+			
 		}
-	
+
+
+	//Draw Sector Borders
 	for(var i = 0; i < sectors.length; i++){
 		var sector = sectors[i];
 
@@ -691,145 +562,50 @@ function DrawMap(){
 			var nvertex = sector.vertex[j+1];
 
 			//Draw line between this vertex and next vertex
-
-			//---------------------------------------------------------------------
-			//	DRAW A VERTICAL LINE
-			//---------------------------------------------------------------------   
-			function drawVerticalLine(in_x, y_from, y_to, color){
-
-				if(y_from == y_to){
-					 //drawPixel(in_x, y_from, color)
-					 drawMapPixel(W/2+in_x*scale,H/2+y_from*scale,color);
-			         return
-				}
-
-				let start = y_from
-			    let end = y_to
-			        
-			    if(y_from >= y_to){
-			     	start = y_to
-			     	end = y_from
-			    }
-			       
-			    for(let line_y = start; line_y < end+1; line_y++)
-			     	drawMapPixel(W/2+in_x*scale,H/2+line_y*scale,color);
-			    
-			}
-
-			function drawLine(_start,_end,color){
-
-				let start = Object.assign( {}, _start ); 
-				let end = Object.assign( {}, _end ); 
-
-				if(start.x == end.x){
-					//draw vertical line
-			        drawVerticalLine(start.x, start.y, end.y, color)
-			        return
-				}
-			            
-
-			    slope = Math.abs((end.y - start.y) / (end.x - start.x))
-			    error = 0.0
-
-			    if(slope < 1){
-
-			        // 1. check in which octants we are & set init values
-			       if(end.x < start.x){
-			       		let a = start.x
-			       		start.x = end.x
-			       		end.x = a
-
-			       		a = start.y
-			       		start.y = end.y
-			       		end.y = a
-
-			        }
-			            
-			        line_y = start.y
-			        dy_sign = -1
-			        
-			        if (start.y < end.y) 
-			        	dy_sign = 1 
-
-			   
-			        // 2. step along x coordinate
-			        for(let line_x = start.x; line_x < end.x + 1; line_x++ ){
-			            //drawPixel(new point(line_x, line_y), color)
-						drawMapPixel(W/2+line_x*scale,H/2+line_y*scale,color);
-			            error += slope
-			            if(error >= 0.5){
-			                line_y += dy_sign
-			                error -= 1
-			            }
-			        }
-			    } else {
-
-			        // Case of a rather vertical line
-
-			        // 1. check in which octants we are & set init values
-			        if(start.y > end.y){
-			        	let a = start.x
-			       		start.x = end.x
-			       		end.x = a
-
-			       		a = start.y
-			       		start.y = end.y
-			       		end.y = a
-			        }
-
-			        line_x = start.x
-
-			        slope = 1 / slope
-			        dx_sign = -1
-
-			        if (start.x < end.x)
-			        	dx_sign = 1 
-			       
-
-			        // 2. step along y coordinate
-			    	for(let line_y = start.y; line_y < end.y + 1; line_y++ ){
-			     
-			            //drawPixel(new point(line_x, line_y), color)
-						drawMapPixel(W/2+line_x*scale,H/2+line_y*scale,color)
-			            error += slope
-			            if(error >= 0.5){
-			                line_x += dx_sign
-			                error -= 1
-			            }
-			        }
-			    }
-
-			}
-
-			if(sector.neighbors[j] > 0)
-					drawLine(vertex,nvertex,[0,255,120]);
+			if(sector.neighbors[j] < 0)
+				drawLine(vertex,nvertex,[120,130,130]);
 			else
-				drawLine(vertex,nvertex,[255,0,0]);
+				drawLine(vertex,nvertex,[0,255,0]);
+		
+		}
+	}
+
+
+
+	//Draw Vertexes
+	for(var i = 0; i < sectors.length; i++){
+		var sector = sectors[i];
+
+		for(var j = 0; j < sector.vertex.length-1; j++){
+			var vertex = sector.vertex[j];
+			var nvertex = sector.vertex[j+1];
 
 			//Draw vertexes
-			drawMapPixel(W/2+vertex.x*scale,H/2+vertex.y*scale,[0,255,50]);
-
-
+			drawMapPixel( scaleX*(nvertex.x+mapOffsetX) , scaleY*(nvertex.y+mapOffsetY),[255,0,0]);
 
 		}
 	}
 
 
-	//Draw line of sight
-	for(var i = 0; i < 10; i+=.5)
-		drawMapPixel(W/2+(player.where.x+i*player.anglecos)*scale,H/2+(player.where.y+i*player.anglesin)*scale,[150,150,150]);
+	//Draw Temporary Vertexes
+	for(var i = 0; i < temporaryVertex.length; i++){
+		var blinky = (Date.now() % 400 > 200)?[255,0,0]:[200,200,200];
+		//console.log(temporaryVertex[i].x)
+		drawMapPixel(scaleX*(temporaryVertex[i].x+mapOffsetX),scaleY*(temporaryVertex[i].y+mapOffsetY) ,blinky);
+	}
 
+
+	//Draw line of sight
+	for(var i = 0; i < 5; i+=.5)
+		drawMapPixel( scaleY*(mapOffsetX+player.where.x+i*player.anglecos) , scaleY*(mapOffsetY+player.where.y+i*player.anglesin),[150,150,150]);
 
 	//Draw Player, making it blink
-	if(Date.now() % 800 > 400)
-		drawMapPixel(W/2+player.where.x*scale,H/2+player.where.y*scale,[255,0,0]);
-	else
-		drawMapPixel(W/2+player.where.x*scale,H/2+player.where.y*scale,[200,200,200]);
+	var blinky = (Date.now() % 800 > 400)?[255,0,0]:[200,200,200];
+	drawMapPixel(scaleX*(player.where.x+mapOffsetX),scaleY*(player.where.y+mapOffsetY) ,blinky);
 
+	if(mode == "EDITOR")
+		this.context.putImageData(this.MapImage, 0, 0);
 
-
-
-	this.MapContext.putImageData(this.MapImage, 0, 0);
 }
 
 //---------------------------------------------------------------------
@@ -863,10 +639,6 @@ function main(){
 	this.context = canvas.getContext('2d',{ alpha: false });
 	this.canvas = canvas;
 
-	let MapCanvas = document.querySelector('#map');
-	this.MapContext = MapCanvas.getContext('2d',{ alpha: false });
-	this.MapCanvas = MapCanvas;
-
 	this.wsad = [0,0,0,0];
 	this.ground=0;
 	this.falling=1;
@@ -890,7 +662,11 @@ function main(){
 
 
 function postLoop(t0){
-  this.context.putImageData(this.image, 0, 0);
+  if(mode == "GAME")
+  	this.context.putImageData(this.image, 0, 0);
+  else
+  	this.context.putImageData(this.MapImage, 0, 0);
+
   let t1 = performance.now()
   document.title = `FPS: ${Math.round(1000/(t1-t0)) }`
   window.requestAnimationFrame(gameLoop);
