@@ -6,7 +6,7 @@
       display: block;
       image-rendering: -moz-crisp-edges;
       image-rendering: pixelated;
-      transform: scale(3.2);
+      transform: scale(4);
       transform-origin: left top;
        border: 1px solid blue;
     }
@@ -24,16 +24,21 @@
 
   
 <container>
+    Move with WASD, look with arrows.
   <ul>
   <li>Current Sector: <a id="CurrentSector"></a></li>
   <li>Position: <a id="CurrentPosition"></a></li>
   <li>Angle: <a id="CurrentAngle"></a> Yaw: <a id="CurrentYaw"></a></li>
+  <li>Press E to switch between map editor and game</li>
+  <li>When in Editor mode, G=Add Sector</li>
+  <li>H=Lower current sector ceiling height, Y=Raise current ceiling height</li>
+  <li>J=Lower current sector floor height, U=Raise current floor height</li>
 </ul>
 </container>
 
 <container>
     <canvas id="pixelGame" width="300" height="200"></canvas>
-    <canvas id="map" width="300" height="200"></canvas>
+    <script src="Utilities.js"></script>  
     <script src="PortalEngine.js"></script>   
 </container>
 
