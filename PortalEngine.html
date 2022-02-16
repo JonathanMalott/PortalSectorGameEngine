@@ -26,19 +26,20 @@
 <container>
     Move with WASD, look with arrows.
   <ul>
-  <li>Current Sector: <a id="CurrentSector"></a></li>
-  <li>Position: <a id="CurrentPosition"></a></li>
-  <li>Angle: <a id="CurrentAngle"></a> Yaw: <a id="CurrentYaw"></a></li>
+  <li>Current Sector: <b><a id="CurrentSector"></a></b> | Position: <a id="CurrentPosition"></a> | Angle: <a id="CurrentAngle"></a> Yaw: <a id="CurrentYaw"></a></li>
   <li>Press E to switch between map editor and game</li>
-  <li>When in Editor mode, G=Add Sector</li>
-  <li>H=Lower current sector ceiling height, Y=Raise current ceiling height</li>
-  <li>J=Lower current sector floor height, U=Raise current floor height</li>
+  <li>When in Editor mode, G=Add Sector, B=Select Sector to <button onclick="deleteSector()" type="button" >Delete</button></li>
+  <li><button id="saveMap" type="button" onclick="saveLevel()">Save Current Map</button></li>
+  <li><button onclick="ceilDown()" type="button" >Ceiling Down</button><button onclick="ceilUp()" type="button">Ceiling Up</button></li>
+
+  <li><button onclick="floorDown()" type="button" >Floor Down</button><button onclick="floorUp()" type="button">Floor Up</button></li>
 </ul>
 </container>
 
 <container>
     <canvas id="pixelGame" width="300" height="200"></canvas>
-    <script src="Utilities.js"></script>  
+    <script src="level.js"></script> 
+    <script src="Utilities.js"></script> 
     <script src="PortalEngine.js"></script>   
 </container>
 
