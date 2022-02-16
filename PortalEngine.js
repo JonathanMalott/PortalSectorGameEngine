@@ -20,116 +20,40 @@ var mode = "GAME"
 var editorMode = "VIEW" 
 
 
-var temporaryVertex = []
+var temporaryVertex = [];
+var selectedSector = 0;
+mouseX = 0;
+mouseY = 0;
 
 
-//Vertex - y coordinate followed by list of x coordinates
-vertexRaw = [[0,	 0, 6, 28],
-			 [2,	 1, 17.5,],
-			 [5,	 4, 6, 18, 21],
-			 [6.5,	 9, 11,13,13.5,17.5],
-			 [7,	 5, 7,8,9,11,13,13.5,15,17,19,21],
-			 [7.5,   4, 6],
-			 [10.5,  4, 6],
-			 [11,    5, 7,8,9,11,13,13.5,15,17,19,21],
-			 [11.5,  9, 11,13,13.5,17.5],
-			 [13,4,  6, 18,21],
-			 [16,    1, 17.5],
-			 [18,    0, 6,28]];
-
-//Sector (floor height, ceiling height, then vertex numbers in clockwise order)
-//After the list of vertexes comes the list of sector numbers in the opposite side of that wall, -1 is none
-sectorRaw = [
-	[0,20	,3,14,29,49,-1,1,11,22],
-	[0,20	,17,15,14,3,9,-1,12,11,0,21],
-	[0,20	,41,42,43,44,50,49,40,-1,20,-1,3,-1,-1,22],
-	[0,14	,12,13,44,43,35,20,-1,21,-1,2,-1,4],
-	[0,12	,16,20,35,31,-1,-1,3,-1],
-	[16,28	,24,8,2,53,48,39,18,-1,7,-1,6,-1],
-	[16,28	,53,52,46,47,48,5,-1,8,10,-1],
-	[16,28	,1,2,8,7,6,23,-1,5,-1,10],
-	[16,36	,46,52,51,45,-1,6,-1,24],
-	[16,36	,25,26,28,27,24,-1,10,-1],
-	[16,26	,6,7,47,46,28,26,-1,7,-1,6,-1,9],
-	[2,20	,14,15,30,29,0,1,12,22],
-	[4,20	,15,17,32,30,11,1,13,22],
-	[6,20	,17,18,33,32,12,-1,14,-1],
-	[8,20	,18,19,34,33,13,19,15,20],
-	[10,24	,19,21,36,34,14,-1,16,-1],
-	[12,24	,21,22,37,36,15,-1,17,-1],
-	[14,28	,22,23,38,37,16,-1,18,-1],
-	[16,28	,23,24,39,38,17,-1,5,-1],
-	[8,14	,10,11,19,18,1,21,-1,14],	
-	[8,14	,33,34,42,41,1,14,-1,2],
-	[0,20	,4,13,12,11,10,9,3,-1,-1,3,-1,19,-1,1],
-	[0,20	,29,30,32,40,49,0,11,12,-1,2],
-	[16,36	,1,6,5,0,-1,7,-1,24],
-	[16,36	,0,5,25,27,45,51,-1,23,-1,9,-1,8]
-];
 
 
-//List of XY coordinates of verticies
-vertexRaw = [ [0,0],//0
-			  [15,0],   //1
-			  [40,0],   //2
-			  [0,15],   //3
-			  [15,15],  //4
-			  [40,15],  //5
-			  [0,30],   //6
-			  [15,30],  //7
-			  [ 15,25], //8
-			  [35,25],  //9
-			  [35,30],  //10
-			  [15,30],  //11
-			  [25,-10], //12
-			  [35,-5],//13
-			  [40,-5],//14
-			  [40,30],//15
-			  [35,30], //16
-			  [30,-5],//17
-			  [35,-5],//18
-			  [30,0],//19
-			  [35,0],//20
-	 ];
-
-
-//Vertex - y coordinate followed by list of x coordinates
-//vertexRaw = [[0,	 0, 15, 30],
-//			 [15,	 0, 15, 30],
-//			 [30,    0, 15]];
-
-//Sector (floor height, ceiling height, then vertex numbers in clockwise order)
-//After the list of vertexes comes the list of sector numbers in the opposite side of that wall, -1 is none
-sectorRaw = [
-	[0,15,     0,1,4,3,         -1,2, 1,-1    ],//first hall
-	[-1,17,     3,4,8,7,6,        0,-1,3,-1,-1 ],
-	[2,30,    1,19,20,2,5,4,       -1,5,-1,-1,-1,0  ],//tall room
-	[-7,14,    8,9,10,11,       -1,4,-1,1     ],//hallway 1
-	[-12,-1,   13,14,15,16,20,     -1,-1,-1,-1,5   ],//underneath row
-	[-12,25,     17,18,20,19,     -1,4,-1,-1   ],//shaft
-];
 
 function LoadData(){
 
 	vertices = [];
+	sectors = [];
 
 	/* Initialize the vertices */
 	for(var i = 0; i < vertexRaw.length; i++)
 		vertices.push(new xy(vertexRaw[i][0],vertexRaw[i][1]))
-		
+			
+	console.log("Vertexes "+vertexRaw.length);
+	console.log("Sectors "+sectorRaw.length);
 
 	/* Initialize the sectors */
 	for(var i = 0; i < sectorRaw.length; i++){
 
 		var thisSector = sectorRaw[i];
 		var newSector = new sector();
+
 		newSector.floor = thisSector[0];
 		newSector.ceil = thisSector[1];
 
 		for(var j = 2; j < (thisSector.length-2)/2+2; j++) 
 			newSector.vertex.push( vertices[  thisSector[j] ] );
 		
-		newSector.vertex.push( vertices[  thisSector[2] ] );
+		newSector.vertex.push( vertices[ thisSector[2] ]);
 
 		for(var k = (thisSector.length-2)/2+2; k < thisSector.length; k++){
 			newSector.neighbors.push( thisSector[k] );
@@ -139,12 +63,7 @@ function LoadData(){
 		newSector.neighbors.push( thisSector[ (thisSector.length-2)/2+2] );
 		newSector.npoints++;
 		
-		
-	    //this.vertex = new xy();
-	    //this.neighbors = null;
-	    //this.npoints = null;
 		sectors.push(newSector)
-
 	}
 
 	/* Initialize Player Data */
@@ -190,6 +109,7 @@ function vline(x,y1,y2,top,middle,bottom)
 function MovePlayer(dx,dy)
 {
 	if(editorMode == "ADDSECTOR") return;
+	if(editorMode == "ADDVERTEX") return;
 
     var px = player.where.x;
     var py = player.where.y;
@@ -414,11 +334,28 @@ if(true){
 	document.onkeydown = checkKey;
 	document.onkeyup = checkKey;
 	document.onclick = checkMouse;
+
+	window.addEventListener('mousemove', draw, false);
+	function draw(e) {
+	    mouseX = getMousePos(canvas, e).x; mouseY = getMousePos(canvas, e).y;
+	}
+
 	function checkMouse(event){
 	switch (event.which) {
 	    case 1:
 	      if(mode== "EDITOR" && editorMode=="ADDSECTOR"){
 				mapAddVertex()
+		  }else if(mode== "EDITOR" && editorMode=="MOVEPLAYER"){
+		  		var newX = Math.round(mouseX/5)*5;
+				var newY = Math.round(mouseY/5)*5;
+		
+				player.where.x =  (newX-mapOffsetX)/scaleX-5;
+				player.where.y =  (newY-mapOffsetY)/scaleY-5;
+
+				player.sector = sectors.length-1;
+				
+				editorMode = "VIEW";
+				mode = "GAME"
 		  }
 	      break;
 	  }
@@ -446,9 +383,19 @@ if(true){
 				falling=1;
 				break;
 			case 'ArrowRight': 
+				if(event.type=="keydown" && mode == "EDITOR" && editorMode == "ADDVERTEX"){
+					if(selectedSector == sectors.length-1) selectedSector = 0;
+					else selectedSector++;
+					break;
+				}
 				player.angle += .1
 				break;
 			case 'ArrowLeft': 
+				if(event.type=="keydown" && mode == "EDITOR" && editorMode == "ADDVERTEX"){
+					if(selectedSector == 0) selectedSector = sectors.length-1;
+					else selectedSector--;
+					break;
+				}
 				player.angle -= .1
 				break;
 			case 'ArrowUp': 
@@ -457,21 +404,6 @@ if(true){
 			case 'ArrowDown': 
 				player.yaw += .1
 				break;
-
-
-			case 'KeyY': 
-				sectors[player.sector].ceil += 1
-				break;
-			case 'KeyH': 
-				sectors[player.sector].ceil -= 1
-				break;
-			case 'KeyU': 
-				sectors[player.sector].floor += 1
-				break;
-			case 'KeyJ': 
-				sectors[player.sector].floor -= 1
-				break;
-
 
 			case 'KeyE': 
 				if(event.type=="keydown" && mode == "EDITOR")
@@ -485,10 +417,37 @@ if(true){
 						editorMode = "ADDSECTOR"
 					else if(event.type=="keydown" && editorMode == "ADDSECTOR")
 						editorMode = "VIEW";
-					console.log(editorMode)
+				}
+				break;
+			case 'KeyB': 
+				if(mode == "EDITOR"){
+					if(event.type=="keydown" && editorMode == "VIEW")
+						editorMode = "ADDVERTEX"
+					else if(event.type=="keydown" && editorMode == "ADDVERTEX")
+						editorMode = "VIEW";
 				}
 				break;
 
+			case 'KeyM': 
+				if(mode == "EDITOR"){
+					if(event.type=="keydown" && editorMode == "VIEW")
+						editorMode = "MOVEPLAYER"
+					else if(event.type=="keydown" && editorMode == "MOVEPLAYER")
+						editorMode = "VIEW";
+				}
+				break;
+
+
+			case 'KeyP': 
+				if(event.type=="keydown")
+					player.sector += 1;
+
+			case 'KeyL': 
+				if(event.type=="keydown")
+					player.sector -= 1;
+						
+				
+				break;
 
 
 			case 'Space': 
@@ -501,12 +460,7 @@ if(true){
 
 	};
 
-	window.addEventListener('mousemove', draw, false);
-	function draw(e) {
-	    var pos = getMousePos(canvas, e);
-	    this.mouseX = pos.x;
-	    this.mouseY = pos.y;
-	}
+
 
 	function getMousePos(canvas, evt) {
 	    var rect = canvas.getBoundingClientRect();
@@ -519,12 +473,149 @@ if(true){
 
 
 
+//-------------------------------------------------------------------
+// Allows the user to add more sectors to the map
+//-------------------------------------------------------------------
+function isBetween(a, b, c){
+
+    crossproduct = (c.y - a.y) * (b.x - a.x) - (c.x - a.x) * (b.y - a.y)
+
+    // compare versus epsilon for floating point values, or != 0 if using integers
+    if(Math.abs(crossproduct) > 0)
+        return false
+
+    dotproduct = (c.x - a.x) * (b.x - a.x) + (c.y - a.y)*(b.y - a.y)
+    if(dotproduct < 0)
+        return false
+
+    squaredlengthba = (b.x - a.x)*(b.x - a.x) + (b.y - a.y)*(b.y - a.y)
+    if(dotproduct > squaredlengthba)
+        return false
+
+    return true
+}
 
 function mapAddVertex(){
-	var newX = Math.ceil(this.mouseX/5)*5;
-	var newY = Math.ceil(this.mouseY/5)*5;
-	//scaleX*(player.where.x+mapOffsetX)
-	temporaryVertex.push( new xy(  (newX-mapOffsetX)/scaleX  ,  (newY-mapOffsetY)/scaleY  ) );
+
+	//Detect where user clicked on the map and round it to the nearest 5
+	var newX = Math.round(mouseX/5)*5;
+	var newY = Math.round(mouseY/5)*5;
+	var newPoint = new xy(  (newX-mapOffsetX)/scaleX-5  ,  (newY-mapOffsetY)/scaleY-5  );
+
+	//When the user clicks on the first point again, close the sector
+	if(temporaryVertex.length > 2 && temporaryVertex[0].x == newPoint.x && temporaryVertex[0].y == newPoint.y){
+		
+		//Containers to hold vertexes and neighbors
+		var vid = [];
+		var neighbor = [];
+
+		//Loop through temporary vertexes and add them to the container/
+		for(var t = 0; t < temporaryVertex.length; t++){
+			vertexRaw.push([temporaryVertex[t].x,temporaryVertex[t].y])
+			vid.push(vertexRaw.length-1)
+			//neighbor.push(-1)
+		}
+
+
+		//Find the neighbor of the new sector, if any
+		for(var i = 0; i < vid.length-1; i++){
+
+			var p11 = new xy(vertexRaw[vid[i]][0],vertexRaw[vid[i]][1] );
+			var p12 = new xy(vertexRaw[vid[i+1]][0], vertexRaw[vid[i+1]][1] );
+
+
+			var hasNeighbor = false;
+
+			//Loop through each wall in each sector and determine if it overlaps the current wall. If it does, we should make it a neighbor.
+			for(var j = 0; j < sectors.length; j++){
+				for(var k = 0; k < sectors[j].vertex.length-2; k++){
+					
+					var p21 = sectors[j].vertex[k];
+					var p22 = sectors[j].vertex[k+1];
+
+					//console.log(p11,p12,p21,p22)
+
+
+					//Determine if the line segment made by p11,p12 and p21,p22 overlap at all. 
+					//If they do, portals need to be made if the two sectors overlap floor/celings
+
+					var t1 = isBetween(p11,p12,p21);
+					var t2 = isBetween(p11,p12,p22);
+					var t3 = isBetween(p21,p22,p11);
+					var t4 = isBetween(p21,p22,p12);
+
+					//no overlap, skip this wall
+					if(t1 == false && t2 == false && t3 == false && t4 == false) continue;
+
+					//p2 is entirely within p1. Make new vertex and wall within p1 and make p1 and p2 neighbors
+					if(t1 && t2){
+
+						console.log("1",p11,p12,p21,p22)
+						neighbor.push(j)
+						hasNeighbor = true;
+
+						//Change other wall to make the new sector its neighbor
+						//console.log( [j].neighbors,k)
+						sectorRaw[j][2+sectors[j].vertex.length+k-1] = sectorRaw.length;
+						//console.log(sectors[j].neighbors,k)
+
+						break;
+
+					}
+
+					//p1 is entirely within p2. Make new vertex and wall within p1 and make p1 and p2 neighbors
+					if(t3 && t4){
+
+						console.log("2",p11,p12,p21,p22)
+						neighbor.push(j)
+						hasNeighbor = true;
+
+						//Change other wall to make the new sector its neighbor
+
+
+						break
+					}
+	
+					
+
+				}
+			}
+
+			//No neighbor was found, make it a solid wall
+			if(hasNeighbor == false)
+				neighbor.push(-1)
+			 
+
+		}
+
+		neighbor.push(-1);
+
+
+		sectorRaw.push([ 0,15, ...vid , ...neighbor ]);
+
+		//reset temporary vertex array
+		temporaryVertex = [];
+
+		//Leave editor mode
+		editorMode = "VIEW";
+
+		//Reload data to update map
+		LoadData();
+
+		return;
+
+	}
+
+	//The user hasn't closed off the sector yet, keep adding them to temporary vertex array. Remove duplicates in case the user clicks on same point twice. 
+	temporaryVertex.push( newPoint );
+	temporaryVertex = [...new Set(temporaryVertex)];
+	
+}
+
+
+function saveLevel(){
+	console.log(sectorRaw);
+	console.log(vertexRaw);
 }
 
 
@@ -544,6 +635,10 @@ function DrawMap(){
 				drawMapPixel(x,y,[50,50,50])
 			else if(editorMode == "ADDSECTOR")
 				drawMapPixel(x,y,[55,35,35])
+			else if(editorMode == "ADDVERTEX")
+				drawMapPixel(x,y,[35,55,35])
+			else if(editorMode == "MOVEPLAYER")
+				drawMapPixel(x,y,[35,35,55])
 
 			if(x % 100 == 0)
 				drawMapPixel(x,y,[80,80,80]);
@@ -561,11 +656,21 @@ function DrawMap(){
 			var vertex = sector.vertex[j];
 			var nvertex = sector.vertex[j+1];
 
+
+		
+			var color1 = [120,130,130];
+			var color2 = [0,255,0]
+			if(editorMode == "ADDVERTEX" && selectedSector == i){
+				color1 = (Date.now() % 900 > 450)?[0,0,0]:[120,130,130];
+				color2 = (Date.now() % 800 > 450)?[0,255,0]:[120,255,200];
+			}
+			
+
 			//Draw line between this vertex and next vertex
 			if(sector.neighbors[j] < 0)
-				drawLine(vertex,nvertex,[120,130,130]);
+				drawLine(vertex,nvertex,color1);
 			else
-				drawLine(vertex,nvertex,[0,255,0]);
+				drawLine(vertex,nvertex,color2);
 		
 		}
 	}
@@ -590,7 +695,7 @@ function DrawMap(){
 	//Draw Temporary Vertexes
 	for(var i = 0; i < temporaryVertex.length; i++){
 		var blinky = (Date.now() % 400 > 200)?[255,0,0]:[200,200,200];
-		//console.log(temporaryVertex[i].x)
+		if(i == 0) blinky = (Date.now() % 200 > 100)?[255,0,0]:[200,200,200];
 		drawMapPixel(scaleX*(temporaryVertex[i].x+mapOffsetX),scaleY*(temporaryVertex[i].y+mapOffsetY) ,blinky);
 	}
 
@@ -646,8 +751,8 @@ function main(){
 	this.ducking=0;
 	this.yaw = 0;
 
-	this.mouseX = -1;
-	this.mouseY = -1;
+	mouseX = -1;
+	mouseY = -1;
 
 	this.image = context.createImageData(canvas.width, canvas.height);
 	this.data = image.data;
@@ -752,8 +857,8 @@ function gameLoop(timeStamp){
 
     /* mouse aiming */
     var rect = canvas.getBoundingClientRect();
-    var x = this.mouseX;// - rect.left;
-    var y = this.mouseY;// - rect.top;
+    var x = mouseX;// - rect.left;
+    var y = mouseY;// - rect.top;
 	var change = convertRange(x,[0,W],[-1,1]);
 	if(change < .1 && change > -.1) change = 0;
 	player.angle += 0//change * 0.03;
