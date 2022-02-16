@@ -67,111 +67,181 @@ var scaleX = 2;
 var scaleY = 2;
 
 
-			//---------------------------------------------------------------------
-			//	DRAW A VERTICAL LINE
-			//---------------------------------------------------------------------   
-			function drawVerticalLine(in_x, y_from, y_to, color){
 
-				if(y_from == y_to){
-					 //drawPixel(in_x, y_from, color)
-					 drawMapPixel(W/2+in_x*scale,H/2+y_from*scale,color);
-			         return
-				}
+//----------------------------------------------------------
+// Move the current sector's floor or ceiling up/down
+//----------------------------------------------------------
+function ceilUp(){
+		sectors[player.sector].ceil += 1;
+		sectorRaw[player.sector][1] += 1;
+}
 
-				let start = y_from
-			    let end = y_to
-			        
-			    if(y_from >= y_to){
-			     	start = y_to
-			     	end = y_from
-			    }
-			       
-			    for(let line_y = start; line_y < end; line_y+=(1/scaleY))
-			    	drawMapPixel(mapOffsetX*scaleX+(in_x*scaleX),mapOffsetY*scaleY+(line_y*scaleY),color);
-			    
+function ceilDown(){
+		sectors[player.sector].ceil -= 1
+		sectorRaw[player.sector][1] -= 1;
+}
+
+function floorUp(){
+		sectors[player.sector].floor += 1
+		sectorRaw[player.sector][0] += 1;
+}
+
+function floorDown(){
+		sectors[player.sector].floor -= 1
+		sectorRaw[player.sector][0] -= 1;
+}
+
+
+//----------------------------------------------------------
+// Delete the selected sector
+//----------------------------------------------------------
+function deleteSector(){
+	
+		if(selectedSector == 0) return;
+
+		console.log("Deleting sector", selectedSector)
+
+		//remove this sector
+		sectorRaw.splice(selectedSector, 1)
+
+		//Adjust all neighbors that are this sector to be -1, and neighbors > this sector to be one less 
+		for(var i = 0; i < sectorRaw; i++)
+			for(var k = (sectorRaw[i].length-2)/2+2; k < sectorRaw[i].length; k++){
+				if(sectorRaw[i][k] == selectedSector) sectorRaw[i][k] == -1;
+				if(sectorRaw[i][k] >  selectedSector) sectorRaw[i][k] -= 1;
 			}
 
-			function drawLine(_start,_end,color){
+		//Reload the data
+		LoadData();
 
-				let start = Object.assign( {}, _start ); 
-				let end = Object.assign( {}, _end ); 
+}
 
-				if(start.x == end.x){
-					//draw vertical line
-			        drawVerticalLine(start.x, start.y, end.y, color)
-			        return
-				}
-			            
 
-			    slope = Math.abs((end.y - start.y) / (end.x - start.x))
-			    error = 0.0
+// array of coordinates of each vertex of the polygon
+//var polygon = [ [ 1, 1 ], [ 1, 2 ], [ 2, 2 ], [ 2, 1 ] ];
+//inside([ 1.5, 1.5 ], polygon); // true
+function inside(point, vs) {
+    
+    var x = point.x, y = point.y;
+    
+    var inside = false;
+    for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        var xi = vs[i].x, yi = vs[i].y;
+        var xj = vs[j].x, yj = vs[j].y;
+        
+        var intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    
+    return inside;
+};
 
-			    if(slope < 1){
 
-			        // 1. check in which octants we are & set init values
-			       if(end.x < start.x){
-			       		let a = start.x
-			       		start.x = end.x
-			       		end.x = a
+//---------------------------------------------------------------------
+//	DRAW A VERTICAL LINE
+//---------------------------------------------------------------------   
+function drawVerticalLine(in_x, y_from, y_to, color){
 
-			       		a = start.y
-			       		start.y = end.y
-			       		end.y = a
+	if(y_from == y_to){
+		 //drawPixel(in_x, y_from, color)
+		 drawMapPixel(W/2+in_x*scale,H/2+y_from*scale,color);
+         return
+	}
 
-			        }
-			            
-			        line_y = start.y
-			        dy_sign = -1
-			        
-			        if (start.y < end.y) 
-			        	dy_sign = 1 
+	let start = y_from
+    let end = y_to
+        
+    if(y_from >= y_to){
+     	start = y_to
+     	end = y_from
+    }
+       
+    for(let line_y = start; line_y < end; line_y+=(1/scaleY))
+    	drawMapPixel(mapOffsetX*scaleX+(in_x*scaleX),mapOffsetY*scaleY+(line_y*scaleY),color);
+    
+}
 
-			   
-			        // 2. step along x coordinate
-			        for(let line_x = start.x; line_x < end.x ; line_x+=(1/scaleX) ){
-			            //drawPixel(new point(line_x, line_y), color)
-									drawMapPixel(mapOffsetX*scaleX+(line_x*scaleX),mapOffsetY*scaleY+(line_y*scaleY),color);
-			            error += slope
-			            if(error >= 0.5){
-			                line_y += dy_sign
-			                error -= 1
-			            }
-			        }
-			    } else {
+function drawLine(_start,_end,color){
 
-			        // Case of a rather vertical line
+	let start = Object.assign( {}, _start ); 
+	let end = Object.assign( {}, _end ); 
 
-			        // 1. check in which octants we are & set init values
-			        if(start.y > end.y){
-			        	let a = start.x
-			       		start.x = end.x
-			       		end.x = a
+	if(start.x == end.x){
+		//draw vertical line
+        drawVerticalLine(start.x, start.y, end.y, color)
+        return
+	}
+            
 
-			       		a = start.y
-			       		start.y = end.y
-			       		end.y = a
-			        }
+    slope = Math.abs((end.y - start.y) / (end.x - start.x))
+    error = 0.0
 
-			        line_x = start.x
+    if(slope < 1){
 
-			        slope = 1 / slope
-			        dx_sign = -1
+        // 1. check in which octants we are & set init values
+       if(end.x < start.x){
+       		let a = start.x
+       		start.x = end.x
+       		end.x = a
 
-			        if (start.x < end.x)
-			        	dx_sign = 1 
-			       
+       		a = start.y
+       		start.y = end.y
+       		end.y = a
 
-			        // 2. step along y coordinate
-			    	for(let line_y = start.y; line_y < end.y ; line_y++ ){
-			     
-			            //drawPixel(new point(line_x, line_y), color)
+        }
+            
+        line_y = start.y
+        dy_sign = -1
+        
+        if (start.y < end.y) 
+        	dy_sign = 1 
+
+   
+        // 2. step along x coordinate
+        for(let line_x = start.x; line_x < end.x ; line_x+=(1/scaleX) ){
+            //drawPixel(new point(line_x, line_y), color)
 						drawMapPixel(mapOffsetX*scaleX+(line_x*scaleX),mapOffsetY*scaleY+(line_y*scaleY),color);
-			            error += slope
-			            if(error >= 0.5){
-			                line_x += dx_sign
-			                error -= 1
-			            }
-			        }
-			    }
+            error += slope
+            if(error >= 0.5){
+                line_y += dy_sign
+                error -= 1
+            }
+        }
+    } else {
 
-			}
+        // Case of a rather vertical line
+
+        // 1. check in which octants we are & set init values
+        if(start.y > end.y){
+        	let a = start.x
+       		start.x = end.x
+       		end.x = a
+
+       		a = start.y
+       		start.y = end.y
+       		end.y = a
+        }
+
+        line_x = start.x
+
+        slope = 1 / slope
+        dx_sign = -1
+
+        if (start.x < end.x)
+        	dx_sign = 1 
+       
+
+        // 2. step along y coordinate
+    	for(let line_y = start.y; line_y < end.y ; line_y++ ){
+     
+            //drawPixel(new point(line_x, line_y), color)
+			drawMapPixel(mapOffsetX*scaleX+(line_x*scaleX),mapOffsetY*scaleY+(line_y*scaleY),color);
+            error += slope
+            if(error >= 0.5){
+                line_x += dx_sign
+                error -= 1
+            }
+        }
+    }
+
+}
