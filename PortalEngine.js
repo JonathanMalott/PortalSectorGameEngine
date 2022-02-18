@@ -13,12 +13,23 @@ const vfov = (.2*H)    // Affects the vertical field of vision
 const scale = 2 // How much to scale up the map
 var player = new playerClass();
 
-//Modes are GAME and EDITOR
+//Modes are GAME and EDITOR, ADDS
 var mode = "GAME"
 
 //VIEW, ADDSECTOR
 var editorMode = "VIEW" 
 
+/* Initialize Player Data */
+player.sector = 0
+player.where.x = 2;
+player.where.y = 6;
+player.velocity.x = 0 ;
+player.velocity.y = 0;
+player.velocity.z = 0;
+player.angle = 0
+player.anglesin = 0
+player.anglecos = 0
+player.yaw = 0
 
 var temporaryVertex = [];
 var selectedSector = 0;
@@ -38,8 +49,7 @@ function LoadData(){
 	for(var i = 0; i < vertexRaw.length; i++)
 		vertices.push(new xy(vertexRaw[i][0],vertexRaw[i][1]))
 			
-	console.log("Vertexes "+vertexRaw.length);
-	console.log("Sectors "+sectorRaw.length);
+	console.log("Reloading Level | Vertexes "+vertexRaw.length + " Sectors "+sectorRaw.length);
 
 	/* Initialize the sectors */
 	for(var i = 0; i < sectorRaw.length; i++){
@@ -66,18 +76,9 @@ function LoadData(){
 		sectors.push(newSector)
 	}
 
-	/* Initialize Player Data */
-	player.sector = 0
-	player.where.x = 2;
-	player.where.y = 6;
 	player.where.z = sectors[player.sector].floor + EyeHeight;
- 	player.velocity.x = 0 ;
- 	player.velocity.y = 0;
- 	player.velocity.z = 0;
- 	player.angle = 0
- 	player.anglesin = 0
- 	player.anglecos = 0
- 	player.yaw = 0
+
+	
  	
 }
 
@@ -108,8 +109,8 @@ function vline(x,y1,y2,top,middle,bottom)
  */
 function MovePlayer(dx,dy)
 {
-	if(editorMode == "ADDSECTOR") return;
-	if(editorMode == "ADDVERTEX") return;
+	if(mode == "EDITOR" && editorMode == "ADDSECTOR") return;
+	if(mode == "EDITOR" && editorMode == "DELETESECTOR") return;
 
     var px = player.where.x;
     var py = player.where.y;
@@ -345,6 +346,8 @@ if(true){
 	    case 1:
 	      if(mode== "EDITOR" && editorMode=="ADDSECTOR"){
 				mapAddVertex()
+		  }else if(mode== "EDITOR" && editorMode=="DELETESECTOR"){
+				sectorAddVertex()
 		  }else if(mode== "EDITOR" && editorMode=="MOVEPLAYER"){
 		  		var newX = Math.round(mouseX/5)*5;
 				var newY = Math.round(mouseY/5)*5;
@@ -383,7 +386,7 @@ if(true){
 				falling=1;
 				break;
 			case 'ArrowRight': 
-				if(event.type=="keydown" && mode == "EDITOR" && editorMode == "ADDVERTEX"){
+				if(event.type=="keydown" && mode == "EDITOR" && editorMode == "DELETESECTOR"){
 					if(selectedSector == sectors.length-1) selectedSector = 0;
 					else selectedSector++;
 					break;
@@ -391,7 +394,7 @@ if(true){
 				player.angle += .1
 				break;
 			case 'ArrowLeft': 
-				if(event.type=="keydown" && mode == "EDITOR" && editorMode == "ADDVERTEX"){
+				if(event.type=="keydown" && mode == "EDITOR" && editorMode == "DELETESECTOR"){
 					if(selectedSector == 0) selectedSector = sectors.length-1;
 					else selectedSector--;
 					break;
@@ -404,6 +407,12 @@ if(true){
 			case 'ArrowDown': 
 				player.yaw += .1
 				break;
+
+
+			case "KeyP":
+				console.log(sectors[0],sectors[ sectors.length-1 ])
+				break;
+
 
 			case 'KeyE': 
 				if(event.type=="keydown" && mode == "EDITOR")
@@ -422,8 +431,8 @@ if(true){
 			case 'KeyB': 
 				if(mode == "EDITOR"){
 					if(event.type=="keydown" && editorMode == "VIEW")
-						editorMode = "ADDVERTEX"
-					else if(event.type=="keydown" && editorMode == "ADDVERTEX")
+						editorMode = "DELETESECTOR"
+					else if(event.type=="keydown" && editorMode == "DELETESECTOR")
 						editorMode = "VIEW";
 				}
 				break;
@@ -472,29 +481,54 @@ if(true){
 }
 
 
+//-------------------------------------------------------------------
+// Add a vertex to an existing sector
+//-------------------------------------------------------------------
+function sectorAddVertex(){
+
+	var newX = Math.round(mouseX/5)*5;
+	var newY = Math.round(mouseY/5)*5;
+	var newPoint = new xy(  (newX-mapOffsetX)/scaleX-5  ,  (newY-mapOffsetY)/scaleY-5  );
+	
+	//First, make sure the user clicked somewhere on the current sector
+	for(var i = 0; i < sectors[selectedSector].vertex.length -1; i++){
+		var thisPoint = sectors[selectedSector].vertex[i];
+		var nextPoint = sectors[selectedSector].vertex[i+1];
+
+		//Can't add new vertex on top of existing vertex
+		if(pointsEqual(thisPoint,newPoint) || pointsEqual(nextPoint,newPoint) ) continue;
+
+		//Check if the newPoint is between two adjacent points
+		if( isBetween(thisPoint,nextPoint,newPoint) ){
+
+
+			//Can't add new vertex wall is a portal
+			if( sectors[selectedSector].neighbors[i] >= 0 ) {
+				alert("You can only add new vertexes to solid walls");
+				break;
+			}
+			
+			//Add vertex to vertex list
+			vertexRaw.push([newPoint.x,newPoint.y]);
+			sectorRaw[selectedSector].splice(2+i+1, 0, vertexRaw.length-1 );
+
+			//Add Neighbor
+			sectorRaw[selectedSector].splice(2+i+sectors[selectedSector].vertex.length, 0, -1 );
+
+			LoadData();
+
+			return;
+
+		}
+
+	}
+
+}
+
 
 //-------------------------------------------------------------------
 // Allows the user to add more sectors to the map
 //-------------------------------------------------------------------
-function isBetween(a, b, c){
-
-    crossproduct = (c.y - a.y) * (b.x - a.x) - (c.x - a.x) * (b.y - a.y)
-
-    // compare versus epsilon for floating point values, or != 0 if using integers
-    if(Math.abs(crossproduct) > 0)
-        return false
-
-    dotproduct = (c.x - a.x) * (b.x - a.x) + (c.y - a.y)*(b.y - a.y)
-    if(dotproduct < 0)
-        return false
-
-    squaredlengthba = (b.x - a.x)*(b.x - a.x) + (b.y - a.y)*(b.y - a.y)
-    if(dotproduct > squaredlengthba)
-        return false
-
-    return true
-}
-
 function mapAddVertex(){
 
 	//Detect where user clicked on the map and round it to the nearest 5
@@ -502,19 +536,55 @@ function mapAddVertex(){
 	var newY = Math.round(mouseY/5)*5;
 	var newPoint = new xy(  (newX-mapOffsetX)/scaleX-5  ,  (newY-mapOffsetY)/scaleY-5  );
 
+	var notInMiddleOfWall = true;
+	// If the newPoint is located on an existing sector wall, it MUST be on a vertex.
+	for(var s = 0; s < sectors.length; s++)
+		for(var i = 0; i < sectors[s].vertex.length -1; i++){
+			var thisPoint = sectors[s].vertex[i];
+			var nextPoint = sectors[s].vertex[i+1];
+
+			
+
+			//Check if the newPoint is between two adjacent points
+			if( isBetween(thisPoint,nextPoint,newPoint) ) 
+				//Can't add new vertex on top of existing vertex
+				if(!pointsEqual(thisPoint,newPoint) && !pointsEqual(nextPoint,newPoint) ) notInMiddleOfWall = false;
+
+		
+		}
+
+	if(!notInMiddleOfWall) {
+		alert("you must use the vertexes on a wall")
+		return;
+	}
+
+
 	//When the user clicks on the first point again, close the sector
 	if(temporaryVertex.length > 2 && temporaryVertex[0].x == newPoint.x && temporaryVertex[0].y == newPoint.y){
+
+		//arrange vertexes into clockwise winding
+		temporaryVertex = orderVertex();
+
+		//only continue if the vertex are convex
+		if(sectorIsConvex() == false){
+			alert("All sectors must be convex. Break up concave sectors into several convex ones.")
+			temporaryVertex = [];
+			return;
+		}
 		
 		//Containers to hold vertexes and neighbors
 		var vid = [];
 		var neighbor = [];
 
-		//Loop through temporary vertexes and add them to the container/
+		//Loop through temporary vertexes and add them to the container
 		for(var t = 0; t < temporaryVertex.length; t++){
 			vertexRaw.push([temporaryVertex[t].x,temporaryVertex[t].y])
 			vid.push(vertexRaw.length-1)
-			//neighbor.push(-1)
 		}
+
+
+		newSectorFloor = 0;
+		newSectorCeil = 15;
 
 
 		//Find the neighbor of the new sector, if any
@@ -533,12 +603,8 @@ function mapAddVertex(){
 					var p21 = sectors[j].vertex[k];
 					var p22 = sectors[j].vertex[k+1];
 
-					//console.log(p11,p12,p21,p22)
-
-
 					//Determine if the line segment made by p11,p12 and p21,p22 overlap at all. 
 					//If they do, portals need to be made if the two sectors overlap floor/celings
-
 					var t1 = isBetween(p11,p12,p21);
 					var t2 = isBetween(p11,p12,p22);
 					var t3 = isBetween(p21,p22,p11);
@@ -547,17 +613,30 @@ function mapAddVertex(){
 					//no overlap, skip this wall
 					if(t1 == false && t2 == false && t3 == false && t4 == false) continue;
 
-					//p2 is entirely within p1. Make new vertex and wall within p1 and make p1 and p2 neighbors
-					if(t1 && t2){
+					if( (pointsEqual(p11,p21) && pointsEqual(p12,p22)) || ((pointsEqual(p12,p21) && pointsEqual(p11,p22))) ){
 
-						console.log("1",p11,p12,p21,p22)
 						neighbor.push(j)
 						hasNeighbor = true;
 
 						//Change other wall to make the new sector its neighbor
-						//console.log( [j].neighbors,k)
 						sectorRaw[j][2+sectors[j].vertex.length+k-1] = sectorRaw.length;
-						//console.log(sectors[j].neighbors,k)
+
+						newSectorFloor = sectorRaw[j][0];
+						newSectorCeil = sectorRaw[j][1];
+
+						break;
+
+					}
+
+					//p2 is entirely within p1. Make new vertex and wall within p1 and make p1 and p2 neighbors
+					/*if(t1 && t2){
+
+						console.log("|1")
+						neighbor.push(j)
+						hasNeighbor = true;
+
+						//Change other wall to make the new sector its neighbor
+						sectorRaw[j][2+sectors[j].vertex.length+k-1] = sectorRaw.length;
 
 						break;
 
@@ -566,32 +645,61 @@ function mapAddVertex(){
 					//p1 is entirely within p2. Make new vertex and wall within p1 and make p1 and p2 neighbors
 					if(t3 && t4){
 
-						console.log("2",p11,p12,p21,p22)
+						console.log("|2");
 						neighbor.push(j)
 						hasNeighbor = true;
 
 						//Change other wall to make the new sector its neighbor
+						break;
+					}
 
+					if(t1 && t4){
 
+						console.log("3",p11,p12,p21,p22);
+						
 						break
 					}
-	
-					
+
+					if(t2 && t4){
+
+						console.log("|4");
+
+						neighbor.push(j);
+						hasNeighbor = true;
+
+						//Change other wall to make the new sector its neighbor
+						sectorRaw[j][2+sectors[j].vertex.length+k-2] = sectorRaw.length;
+						
+						break
+					}
+
+					if(t2 && t4){
+
+						console.log("5",p11,p12,p21,p22)
+						
+						break
+					}
+
+					if(t1 && t4){
+
+						console.log("6",p11,p12,p21,p22)
+						
+						break
+					}*/
 
 				}
 			}
 
 			//No neighbor was found, make it a solid wall
-			if(hasNeighbor == false)
-				neighbor.push(-1)
+			if(hasNeighbor == false) neighbor.push(-1)
 			 
 
 		}
 
 		neighbor.push(-1);
 
-
-		sectorRaw.push([ 0,15, ...vid , ...neighbor ]);
+		//Add new sector, make the floor and ceiling the same as the sector it is connected to
+		sectorRaw.push([ newSectorFloor,newSectorCeil, ...vid , ...neighbor ]);
 
 		//reset temporary vertex array
 		temporaryVertex = [];
@@ -635,7 +743,7 @@ function DrawMap(){
 				drawMapPixel(x,y,[50,50,50])
 			else if(editorMode == "ADDSECTOR")
 				drawMapPixel(x,y,[55,35,35])
-			else if(editorMode == "ADDVERTEX")
+			else if(editorMode == "DELETESECTOR")
 				drawMapPixel(x,y,[35,55,35])
 			else if(editorMode == "MOVEPLAYER")
 				drawMapPixel(x,y,[35,35,55])
@@ -660,7 +768,7 @@ function DrawMap(){
 		
 			var color1 = [120,130,130];
 			var color2 = [0,255,0]
-			if(editorMode == "ADDVERTEX" && selectedSector == i){
+			if(editorMode == "DELETESECTOR" && selectedSector == i){
 				color1 = (Date.now() % 900 > 450)?[0,0,0]:[120,130,130];
 				color2 = (Date.now() % 800 > 450)?[0,255,0]:[120,255,200];
 			}
@@ -783,6 +891,8 @@ function gameLoop(timeStamp){
 
 	//Update Screen Data
 	document.querySelector('#CurrentSector').text = player.sector;
+	document.querySelector('#CurrentFloor').text = sectors[player.sector].floor;
+	document.querySelector('#CurrentCeil').text = sectors[player.sector].ceil;
 	document.querySelector('#CurrentPosition').text = Math.round(player.where.x*10)/10 + " " + Math.round(player.where.y*10)/10 + " " + Math.round(player.where.z*10)/10 ;
 	document.querySelector('#CurrentYaw').text = Math.round(player.yaw*100)/100;
 	document.querySelector('#CurrentAngle').text = Math.round(player.angle*100)/100;
