@@ -67,6 +67,9 @@ var scaleX = 2;
 var scaleY = 2;
 
 
+function pointsEqual(p1,p2){
+	return (p1.x == p2.x && p1.y == p2.y);
+}
 
 //----------------------------------------------------------
 // Move the current sector's floor or ceiling up/down
@@ -92,12 +95,87 @@ function floorDown(){
 }
 
 
+
+//----------------------------------------------------------
+// Determine if the sector the user wants to create is convex
+//----------------------------------------------------------
+function findAngle(A,B,C) {
+		//B is the center point
+    var AB = Math.sqrt(Math.pow(B.x-A.x,2)+ Math.pow(B.y-A.y,2));    
+    var BC = Math.sqrt(Math.pow(B.x-C.x,2)+ Math.pow(B.y-C.y,2)); 
+    var AC = Math.sqrt(Math.pow(C.x-A.x,2)+ Math.pow(C.y-A.y,2));
+    return Math.round(Math.acos((BC*BC+AB*AB-AC*AC)/(2*BC*AB)) * 180 / Math.PI );
+}
+
+function sectorIsConvex(){
+
+	let points =  temporaryVertex; 
+  var total = 0;
+
+	for(let p = 0; p < points.length; p++){
+		let thisPoint = points[p];
+		let lastPoint = (p>0)?points[p-1]:points[points.length-1];
+		let nextPoint = (p<points.length-1)?points[p+1]:points[0];
+		total += 180 - findAngle(lastPoint,thisPoint,nextPoint);
+	}
+
+	return (total == 360);
+}
+
+
+//----------------------------------------------------------
+// Order vertexes of new sector into clockwise order
+//----------------------------------------------------------
+function orderVertex(){
+
+	var totalX = 0, totalY = 0;
+
+	for(var i = 0; i < temporaryVertex.length; i++){
+		totalX+= temporaryVertex[i].x;
+		totalY+= temporaryVertex[i].y;
+	}
+
+	var centerPoint = new xy(totalX/temporaryVertex.length, totalY/temporaryVertex.length)
+
+	/*temporaryVertex.sort(function(a, b) {
+	  var angle1 = Math.atan( (a.y-centerPoint.y) - (a.x-centerPoint.x) )
+	  var angle2 = Math.atan( (b.y-centerPoint.y) - (b.x-centerPoint.x) )
+	  console.log(angle1,angle2)
+	  return angle1 - angle2;
+	});*/
+
+	return temporaryVertex;
+
+
+}
+
+
+function isBetween(a, b, c){
+
+    crossproduct = (c.y - a.y) * (b.x - a.x) - (c.x - a.x) * (b.y - a.y)
+
+    // compare versus epsilon for floating point values, or != 0 if using integers
+    if(Math.abs(crossproduct) > 0)
+        return false
+
+    dotproduct = (c.x - a.x) * (b.x - a.x) + (c.y - a.y)*(b.y - a.y)
+    if(dotproduct < 0)
+        return false
+
+    squaredlengthba = (b.x - a.x)*(b.x - a.x) + (b.y - a.y)*(b.y - a.y)
+    if(dotproduct > squaredlengthba)
+        return false
+
+    return true
+}
+
+
 //----------------------------------------------------------
 // Delete the selected sector
 //----------------------------------------------------------
 function deleteSector(){
-	
-		if(selectedSector == 0) return;
+
+		if(selectedSector == 0 || selectedSector == player.sector) return;
 
 		console.log("Deleting sector", selectedSector)
 
@@ -105,21 +183,24 @@ function deleteSector(){
 		sectorRaw.splice(selectedSector, 1)
 
 		//Adjust all neighbors that are this sector to be -1, and neighbors > this sector to be one less 
-		for(var i = 0; i < sectorRaw; i++)
+		for(var i = 0; i < sectorRaw.length; i++)
 			for(var k = (sectorRaw[i].length-2)/2+2; k < sectorRaw[i].length; k++){
-				if(sectorRaw[i][k] == selectedSector) sectorRaw[i][k] == -1;
+				if(sectorRaw[i][k] == selectedSector) sectorRaw[i][k] = -1;
 				if(sectorRaw[i][k] >  selectedSector) sectorRaw[i][k] -= 1;
 			}
 
+
+		if(selectedSector < player.sector) player.sector -= 1;
+
 		//Reload the data
+		editorMode = "VIEW";
+		selectedSector = 0;
 		LoadData();
 
 }
 
 
 // array of coordinates of each vertex of the polygon
-//var polygon = [ [ 1, 1 ], [ 1, 2 ], [ 2, 2 ], [ 2, 1 ] ];
-//inside([ 1.5, 1.5 ], polygon); // true
 function inside(point, vs) {
     
     var x = point.x, y = point.y;
@@ -161,13 +242,16 @@ function drawVerticalLine(in_x, y_from, y_to, color){
     
 }
 
+
+//---------------------------------------------------------------------
+//	DRAW A LINE BETWEEN TWO POINTS ON THE MAP
+//---------------------------------------------------------------------   
 function drawLine(_start,_end,color){
 
 	let start = Object.assign( {}, _start ); 
 	let end = Object.assign( {}, _end ); 
 
 	if(start.x == end.x){
-		//draw vertical line
         drawVerticalLine(start.x, start.y, end.y, color)
         return
 	}
@@ -193,13 +277,10 @@ function drawLine(_start,_end,color){
         line_y = start.y
         dy_sign = -1
         
-        if (start.y < end.y) 
-        	dy_sign = 1 
-
+        if (start.y < end.y) dy_sign = 1 
    
         // 2. step along x coordinate
-        for(let line_x = start.x; line_x < end.x ; line_x+=(1/scaleX) ){
-            //drawPixel(new point(line_x, line_y), color)
+        for(let line_x = start.x; line_x < end.x ; line_x+=1 ){
 						drawMapPixel(mapOffsetX*scaleX+(line_x*scaleX),mapOffsetY*scaleY+(line_y*scaleY),color);
             error += slope
             if(error >= 0.5){
@@ -207,6 +288,7 @@ function drawLine(_start,_end,color){
                 error -= 1
             }
         }
+
     } else {
 
         // Case of a rather vertical line
