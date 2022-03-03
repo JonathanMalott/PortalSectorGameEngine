@@ -12,7 +12,44 @@ class xy{
 		this.x = x;
 		this.y = y;
 	}
+
 } 
+
+function getNormal(p1,p2,playerPoint){
+
+	//p1 = (a,b) and p2 = (c,d) define the line segment
+	//PlayerPoint = (p,q) be the other point.
+	var a = p1.x, b = p1.y, c = p2.x, d = p2.y;
+	var v = new xy( c-a, d-b); //defines the direction along the line segment. Its perpendicular is:
+	var u = new xy(d-b,a-c);//This can be seen by taking the dot product with v. To get the normal from the perpendicular, just divide by its length:
+	var n = vectorNormalize( u )
+
+	//We now just need to know where P lies relative to the normal. If we take
+	var dir = dot( vectorSubtractVector(playerPoint,p1), n) 
+
+	//Then dir > 0 means n is in the same direction as P, 
+	//whilst dir < 0 means it is in the opposite direction. 
+	//Should dir == 0, then P is in fact on the extended line (not necessarily the line segment itself).
+
+	return n
+}
+
+function vectorNormalize(v){
+	var poppop = Math.sqrt(v.x*v.x + v.y*v.y);
+	return new xy( v.x/poppop, v.y/poppop );
+}
+
+function vectorSubtractVector(v1,v2){
+	return new xy( v1.x-v2.x, v1.y-v2.y );
+}
+
+function dot(v1,v2){
+	return  v1.x*v2.x + v1.y*v2.y ;
+}
+
+function vectorMultiplyScalar(vector,scalar){
+	return new xy( vector.x*scalar, vector.y*scalar );
+}
 
 class sector {
   constructor() {
@@ -24,9 +61,6 @@ class sector {
   }
 } var sectors = [];
 
-var NumSectors = 0;
-
-/* Player: location */
 class playerClass{
 
 	constructor(x, y) {
@@ -42,7 +76,6 @@ class playerClass{
 	 	this.sector = null;
 
 	}
-
 } 
 
 // Utility functions.
@@ -223,12 +256,6 @@ function inside(point, vs) {
 //---------------------------------------------------------------------   
 function drawVerticalLine(in_x, y_from, y_to, color){
 
-	if(y_from == y_to){
-		 //drawPixel(in_x, y_from, color)
-		 drawMapPixel(W/2+in_x*scale,H/2+y_from*scale,color);
-         return
-	}
-
 	let start = y_from
     let end = y_to
         
@@ -243,7 +270,7 @@ function drawVerticalLine(in_x, y_from, y_to, color){
 }
 
 
-//---------------------------------------------------------------------
+//-------------------------------------------- -------------------------
 //	DRAW A LINE BETWEEN TWO POINTS ON THE MAP
 //---------------------------------------------------------------------   
 function drawLine(_start,_end,color){
@@ -253,7 +280,7 @@ function drawLine(_start,_end,color){
 
 	if(start.x == end.x){
         drawVerticalLine(start.x, start.y, end.y, color)
-        return
+        return;
 	}
             
 
@@ -280,11 +307,11 @@ function drawLine(_start,_end,color){
         if (start.y < end.y) dy_sign = 1 
    
         // 2. step along x coordinate
-        for(let line_x = start.x; line_x < end.x ; line_x+=1 ){
+        for(let line_x = start.x; line_x < end.x ; line_x+=1/scaleX ){
 						drawMapPixel(mapOffsetX*scaleX+(line_x*scaleX),mapOffsetY*scaleY+(line_y*scaleY),color);
             error += slope
             if(error >= 0.5){
-                line_y += dy_sign
+                line_y += dy_sign/scaleY
                 error -= 1
             }
         }
@@ -314,13 +341,13 @@ function drawLine(_start,_end,color){
        
 
         // 2. step along y coordinate
-    	for(let line_y = start.y; line_y < end.y ; line_y++ ){
+    	for(let line_y = start.y; line_y < end.y ; line_y+=1/scaleY ){
      
             //drawPixel(new point(line_x, line_y), color)
 			drawMapPixel(mapOffsetX*scaleX+(line_x*scaleX),mapOffsetY*scaleY+(line_y*scaleY),color);
             error += slope
             if(error >= 0.5){
-                line_x += dx_sign
+                line_x += dx_sign/scaleX
                 error -= 1
             }
         }
