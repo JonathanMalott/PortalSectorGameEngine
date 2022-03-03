@@ -12,6 +12,7 @@ const hfov = (0.73*H)  // Affects the horizontal field of vision
 const vfov = (.2*H)    // Affects the vertical field of vision
 const scale = 2 // How much to scale up the map
 var player = new playerClass();
+var dt = 0
 
 //Modes are GAME and EDITOR, ADDS
 var mode = "GAME"
@@ -122,7 +123,9 @@ function MovePlayer(dx,dy)
      */
     var sect = sectors[player.sector];
    	var vert = sect.vertex;
-    for(var s = 0; s < sect.npoints-1; ++s){
+
+
+    for(var s = 0; s < vert.length-1; ++s){
     	//console.log(sect.neighbors[s],vert)
     	if(sect.neighbors[s] >= 0 && IntersectBox(px,py, px+dx,py+dy, vert[s+0].x, vert[s+0].y, vert[s+1].x, vert[s+1].y) && PointSide(px+dx, py+dy, vert[s+0].x, vert[s+0].y, vert[s+1].x, vert[s+1].y) < 0)
         {
@@ -332,6 +335,7 @@ function DrawScreen(){
 //	USER INPUT
 //---------------------------------------------------------------------
 if(true){
+
 	document.onkeydown = checkKey;
 	document.onkeyup = checkKey;
 	document.onclick = checkMouse;
@@ -410,7 +414,7 @@ if(true){
 
 
 			case "KeyP":
-				console.log(sectors[0],sectors[ sectors.length-1 ])
+				console.log( sectors.length	 )
 				break;
 
 
@@ -547,16 +551,15 @@ function mapAddVertex(){
 
 			//Check if the newPoint is between two adjacent points
 			if( isBetween(thisPoint,nextPoint,newPoint) ) 
-				//Can't add new vertex on top of existing vertex
 				if(!pointsEqual(thisPoint,newPoint) && !pointsEqual(nextPoint,newPoint) ) notInMiddleOfWall = false;
 
 		
 		}
 
-	if(!notInMiddleOfWall) {
-		alert("you must use the vertexes on a wall")
-		return;
-	}
+	//if(!notInMiddleOfWall) {
+	//	alert("you must use the vertexes on a wall")
+	//	return;
+	//}
 
 
 	//When the user clicks on the first point again, close the sector
@@ -576,11 +579,18 @@ function mapAddVertex(){
 		var vid = [];
 		var neighbor = [];
 
+		//vid.append()
+
 		//Loop through temporary vertexes and add them to the container
 		for(var t = 0; t < temporaryVertex.length; t++){
 			vertexRaw.push([temporaryVertex[t].x,temporaryVertex[t].y])
 			vid.push(vertexRaw.length-1)
 		}
+
+		vid = [vid[vid.length-1], ...vid];
+
+
+		//vid.push(vertexRaw.length-vid.length)
 
 
 		newSectorFloor = 0;
@@ -598,22 +608,17 @@ function mapAddVertex(){
 
 			//Loop through each wall in each sector and determine if it overlaps the current wall. If it does, we should make it a neighbor.
 			for(var j = 0; j < sectors.length; j++){
-				for(var k = 0; k < sectors[j].vertex.length-2; k++){
+				for(var k = 0; k < sectors[j].vertex.length-1; k++){
+
+
 					
 					var p21 = sectors[j].vertex[k];
-					var p22 = sectors[j].vertex[k+1];
+					var p22 = sectors[j].vertex[k+1]; 
 
-					//Determine if the line segment made by p11,p12 and p21,p22 overlap at all. 
-					//If they do, portals need to be made if the two sectors overlap floor/celings
-					var t1 = isBetween(p11,p12,p21);
-					var t2 = isBetween(p11,p12,p22);
-					var t3 = isBetween(p21,p22,p11);
-					var t4 = isBetween(p21,p22,p12);
-
-					//no overlap, skip this wall
-					if(t1 == false && t2 == false && t3 == false && t4 == false) continue;
 
 					if( (pointsEqual(p11,p21) && pointsEqual(p12,p22)) || ((pointsEqual(p12,p21) && pointsEqual(p11,p22))) ){
+
+						console.log("|-")
 
 						neighbor.push(j)
 						hasNeighbor = true;
@@ -627,74 +632,19 @@ function mapAddVertex(){
 						break;
 
 					}
-
-					//p2 is entirely within p1. Make new vertex and wall within p1 and make p1 and p2 neighbors
-					/*if(t1 && t2){
-
-						console.log("|1")
-						neighbor.push(j)
-						hasNeighbor = true;
-
-						//Change other wall to make the new sector its neighbor
-						sectorRaw[j][2+sectors[j].vertex.length+k-1] = sectorRaw.length;
-
-						break;
-
-					}
-
-					//p1 is entirely within p2. Make new vertex and wall within p1 and make p1 and p2 neighbors
-					if(t3 && t4){
-
-						console.log("|2");
-						neighbor.push(j)
-						hasNeighbor = true;
-
-						//Change other wall to make the new sector its neighbor
-						break;
-					}
-
-					if(t1 && t4){
-
-						console.log("3",p11,p12,p21,p22);
-						
-						break
-					}
-
-					if(t2 && t4){
-
-						console.log("|4");
-
-						neighbor.push(j);
-						hasNeighbor = true;
-
-						//Change other wall to make the new sector its neighbor
-						sectorRaw[j][2+sectors[j].vertex.length+k-2] = sectorRaw.length;
-						
-						break
-					}
-
-					if(t2 && t4){
-
-						console.log("5",p11,p12,p21,p22)
-						
-						break
-					}
-
-					if(t1 && t4){
-
-						console.log("6",p11,p12,p21,p22)
-						
-						break
-					}*/
-
 				}
 			}
 
+			 	
 			//No neighbor was found, make it a solid wall
 			if(hasNeighbor == false) neighbor.push(-1)
-			 
-
+			
 		}
+
+
+		console.log("A NEW SECTOR IS ADDED----")
+		console.log(neighbor);
+		console.log("---")
 
 		neighbor.push(-1);
 
@@ -733,8 +683,8 @@ function DrawMap(){
 	
 
 	//Draw Grey Background and Grid Lines
-	for(var x = 0; x < W; x++)
-		for(var y = 0; y < H; y++){
+	for(let x = 0; x < W; x++)
+		for(let y = 0; y < H; y++){
 			if(x % 10 == 0)
 				drawMapPixel(x,y,[60,60,60]);
 			else if(y % 10 == 0)
@@ -757,31 +707,28 @@ function DrawMap(){
 
 
 	//Draw Sector Borders
-	for(var i = 0; i < sectors.length; i++){
-		var sector = sectors[i];
+	for(var i = 0; i < sectors.length; i++)
+		for(var j = 0; j < sectors[i].vertex.length-1; j++){
 
-		for(var j = 0; j < sector.vertex.length-1; j++){
-			var vertex = sector.vertex[j];
-			var nvertex = sector.vertex[j+1];
+			var vertex = sectors[i].vertex[j];
+			var nvertex = sectors[i].vertex[j+1];
 
-
-		
 			var color1 = [120,130,130];
-			var color2 = [0,255,0]
+			var color2 = [0,255,0];
+
 			if(editorMode == "DELETESECTOR" && selectedSector == i){
 				color1 = (Date.now() % 900 > 450)?[0,0,0]:[120,130,130];
 				color2 = (Date.now() % 800 > 450)?[0,255,0]:[120,255,200];
 			}
-			
 
 			//Draw line between this vertex and next vertex
-			if(sector.neighbors[j] < 0)
+			if(sectors[i].neighbors[j] < 0)
 				drawLine(vertex,nvertex,color1);
 			else
 				drawLine(vertex,nvertex,color2);
 		
 		}
-	}
+	
 
 
 
@@ -793,8 +740,14 @@ function DrawMap(){
 			var vertex = sector.vertex[j];
 			var nvertex = sector.vertex[j+1];
 
-			//Draw vertexes
-			drawMapPixel( scaleX*(nvertex.x+mapOffsetX) , scaleY*(nvertex.y+mapOffsetY),[255,0,0]);
+			try {
+			  //Draw vertexes
+				drawMapPixel( scaleX*(nvertex.x+mapOffsetX) , scaleY*(nvertex.y+mapOffsetY),[255,0,0]);
+			}
+			catch(err) {
+			   console.log('--------')
+			}
+			
 
 		}
 	}
@@ -874,20 +827,29 @@ function main(){
 
 
 
-function postLoop(t0){
+function postLoop(){
+
+
   if(mode == "GAME")
   	this.context.putImageData(this.image, 0, 0);
   else
   	this.context.putImageData(this.MapImage, 0, 0);
 
-  let t1 = performance.now()
-  document.title = `FPS: ${Math.round(1000/(t1-t0)) }`
+  //let t1 = performance.now()
+
+  document.title = `FPS: ${Math.round(1000/(dt)*10)/10 }`
+ 
   window.requestAnimationFrame(gameLoop);
 }
 
 
+var lastTime = 0;
+
 function gameLoop(timeStamp){
-	let t0 = performance.now()
+
+    dt = (timeStamp-lastTime) ;
+
+	lastTime = timeStamp;
 
 	//Update Screen Data
 	document.querySelector('#CurrentSector').text = player.sector;
@@ -941,9 +903,11 @@ function gameLoop(timeStamp){
 
         const sect = sectors[player.sector];
         const vert = sect.vertex;
+        vert.push(vert[0])
+
 
         /* Check if the player is about to cross one of the sector's edges */
-        for(var s = 0; s < sect.npoints-1; ++s)
+        for(var s = 0; s < vert.length-1; ++s) 
             if(IntersectBox(px,py, px+dx,py+dy, vert[s+0].x, vert[s+0].y, vert[s+1].x, vert[s+1].y) && PointSide(px+dx, py+dy, vert[s+0].x, vert[s+0].y, vert[s+1].x, vert[s+1].y) < 0)
             {
                 /* Check where the hole is. */
@@ -953,27 +917,31 @@ function gameLoop(timeStamp){
                 if(hole_high < player.where.z+HeadMargin || hole_low  > player.where.z-eyeheight+KneeHeight)
                 {
                     /* Bumps into a wall! Slide along the wall. */
-                    /* This formula is from Wikipedia article "vector projection". */
-                    var xd = vert[s+1].x - vert[s+0].x;
-                    var yd = vert[s+1].y - vert[s+0].y;
-                    var dx = xd * (dx*xd + yd*dy) / (xd*xd + yd*yd);
-                    var dy = yd * (dx*xd + yd*dy) / (xd*xd + yd*yd);
+                    var p = new xy(dx,dy);
+                    //var n = new xy(-.371,-.928);
+                    var n = getNormal(vert[s+0],vert[s+1],p)
+
+                    var slide = vectorSubtractVector( p  , vectorMultiplyScalar(n, dot(p,n)) );
+
                     moving = 0;
+                    dy = slide.y;
+                    dx = slide.x;
+
                 }
             }
-        MovePlayer(dx, dy);
+        MovePlayer(dx * dt*.05, dy * dt*.05);
         falling = 1;
     }
 
     /* mouse aiming */
-    var rect = canvas.getBoundingClientRect();
-    var x = mouseX;// - rect.left;
-    var y = mouseY;// - rect.top;
-	var change = convertRange(x,[0,W],[-1,1]);
-	if(change < .1 && change > -.1) change = 0;
-	player.angle += 0//change * 0.03;
+    //var rect = canvas.getBoundingClientRect();
+    //var x = mouseX;// - rect.left;
+    //var y = mouseY;// - rect.top;
+	//var change = convertRange(x,[0,W],[-1,1]);
+	//if(change < .1 && change > -.1) change = 0;
+	//player.angle += 0//change * 0.03;
     //yaw          = clamp(yaw - y*0.05, -5, 5);
-    var change = convertRange(yaw - y*0.05,[0,H],[-1,1]);
+    //var change = convertRange(yaw - y*0.05,[0,H],[-1,1]);
     //player.yaw   =  0//change - player.velocity.z*0.01;
     MovePlayer(0,0);
 
@@ -990,8 +958,8 @@ function gameLoop(timeStamp){
 
 	if(pushing) moving = 1;
 
+	postLoop();
 
-	postLoop(t0);
 }
 
 
