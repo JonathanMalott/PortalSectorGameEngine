@@ -8,7 +8,7 @@ A 2.5D Game Engine similar to the Duke 3D Build Engine written in Javascript, ba
 
 
 # Features
--True Room-over-room capabilities (TROR)
--Euclidean and Non-Euclidean Geometries
--Built-in sector editor
--Parallax skies
+- True Room-over-room capabilities (TROR)
+- Euclidean and Non-Euclidean Geometries
+- Built-in sector editor
+- Parallax skies
